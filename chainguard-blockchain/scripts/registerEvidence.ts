@@ -7,13 +7,13 @@ async function main() {
 
   const contract = await connection.ethers.getContractAt(
     "ChainOfCustody",
-    "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+    "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"
   );
 
   console.log("Investigator wallet:", investigator.address);
 
   const tx = await contract.registerEvidence(
-    "EVID-001",
+    "EVID-002",
     "CASE-001",
     "abc123456789fakehash",
     "COLLECTION"
@@ -21,9 +21,26 @@ async function main() {
 
   console.log("Transaction sent:", tx.hash);
 
-  await tx.wait();
+  const receipt = await tx.wait();
 
-  console.log("Evidence registered successfully!");
+console.log("Evidence registered successfully!");
+
+console.log("Transaction receipt:", receipt);
+
+if (receipt) {
+  for (const log of receipt.logs) {
+    try {
+      const parsed = contract.interface.parseLog(log);
+
+      if (parsed) {
+        console.log("Event:", parsed.name);
+        console.log("Event Data:", parsed.args);
+      }
+    } catch {
+      // Ignore logs that are not from our contract
+    }
+  }
+}
 }
 
 main().catch((error) => {

@@ -5,7 +5,7 @@ async function main() {
 
   const contract = await connection.ethers.getContractAt(
     "ChainOfCustody",
-    "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+    "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"
   );
 
   const evidence = await contract.evidenceRecords("EVID-001");
