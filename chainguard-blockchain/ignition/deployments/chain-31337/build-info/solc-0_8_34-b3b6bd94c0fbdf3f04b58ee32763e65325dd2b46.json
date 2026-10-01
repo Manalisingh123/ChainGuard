@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_34-b3b6bd94c0fbdf3f04b58ee32763e65325dd2b46",
+  "solcVersion": "0.8.34",
+  "solcLongVersion": "0.8.34+commit.80d5c536",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.18.0"
+  },
+  "userSourceNameMap": {
+    "contracts/ChainOfCustody.sol": "project/contracts/ChainOfCustody.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "osaka",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/ChainOfCustody.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.34;\r\n\r\ncontract ChainOfCustody {\r\n\r\n    struct Evidence {\r\n        string evidenceId;\r\n        string caseId;\r\n        string evidenceHash;\r\n        uint256 timestamp;\r\n        address custodian;\r\n        string stage;\r\n    }\r\n\r\n    mapping(string => Evidence) public evidenceRecords;\r\n\r\n    function registerEvidence(\r\n        string memory _evidenceId,\r\n        string memory _caseId,\r\n        string memory _evidenceHash,\r\n        string memory _stage\r\n    ) public {\r\n\r\n        evidenceRecords[_evidenceId] = Evidence({\r\n            evidenceId: _evidenceId,\r\n            caseId: _caseId,\r\n            evidenceHash: _evidenceHash,\r\n            timestamp: block.timestamp,\r\n            custodian: msg.sender,\r\n            stage: _stage\r\n        });\r\n\r\n    }\r\n}"
+      }
+    }
+  }
+}
