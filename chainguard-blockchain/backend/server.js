@@ -239,6 +239,81 @@ app.get("/evidence/:evidenceId/history", async (req, res) => {
     }
 });
 
+app.post(
+    "/verify-evidence",
+    upload.single("evidence"),
+    async (req, res) => {
+
+        try {
+            if (!req.file) {
+                return res.status(400).json({
+                    error: "No evidence file uploaded"
+                });
+            }
+
+            const { evidenceId } = req.body;
+
+            if (!evidenceId) {
+                return res.status(400).json({
+                    error: "evidenceId is required"
+                });
+            }
+
+            // Calculate SHA-256 of uploaded file
+            const uploadedHash = crypto
+                .createHash("sha256")
+                .update(req.file.buffer)
+                .digest("hex");
+
+            console.log("Uploaded file hash:", uploadedHash);
+
+            // Read original hash from blockchain
+            const evidence =
+                await contract.evidenceRecords(evidenceId);
+
+            if (evidence[0] === "") {
+                return res.status(404).json({
+                    error: "Evidence not found"
+                });
+            }
+
+            const blockchainHash = evidence[2];
+
+            console.log(
+                "Blockchain evidence hash:",
+                blockchainHash
+            );
+
+            // Compare hashes
+            const verified =
+                uploadedHash === blockchainHash;
+
+            res.json({
+                success: true,
+                evidenceId: evidenceId,
+                uploadedHash: uploadedHash,
+                blockchainHash: blockchainHash,
+                verified: verified,
+                message: verified
+                    ? "Evidence verified successfully"
+                    : "Evidence hash does not match blockchain record"
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Verification error:",
+                error
+            );
+
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+);
+
 const PORT = 3000;
 
 app.listen(PORT, () => {
