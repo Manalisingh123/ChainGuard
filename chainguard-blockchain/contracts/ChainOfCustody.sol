@@ -29,6 +29,13 @@ contract ChainOfCustody {
     string stage
     );
 
+    event EvidenceTransferred(
+    string evidenceId,
+    address newCustodian,
+    uint256 timestamp,
+    string stage
+    );
+
     function registerEvidence(
         string memory _evidenceId,
         string memory _caseId,
@@ -82,6 +89,13 @@ contract ChainOfCustody {
             stage: _newStage
         })
     );
+
+    emit EvidenceTransferred(
+    _evidenceId,
+    msg.sender,
+    block.timestamp,
+    _newStage
+    )  ;
 }
 
 

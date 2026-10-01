@@ -5,17 +5,17 @@ async function main() {
 
   const contract = await connection.ethers.getContractAt(
     "ChainOfCustody",
-    "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"
+    "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0"
   );
 
   const historyLength =
-    await contract.getCustodyHistoryLength("EVID-001");
+    await contract.getCustodyHistoryLength("EVID-002");
 
   console.log("Custody History:");
   console.log("Total Events:", historyLength.toString());
 
   for (let i = 0; i < Number(historyLength); i++) {
-    const event = await contract.custodyHistory("EVID-001", i);
+    const event = await contract.custodyHistory("EVID-002", i);
 
     console.log(`\nEvent ${i + 1}`);
     console.log("Custodian:", event[0]);

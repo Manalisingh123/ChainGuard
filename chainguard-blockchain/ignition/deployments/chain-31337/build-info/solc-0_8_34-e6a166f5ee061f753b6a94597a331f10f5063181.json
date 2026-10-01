@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_34-e6a166f5ee061f753b6a94597a331f10f5063181",
+  "solcVersion": "0.8.34",
+  "solcLongVersion": "0.8.34+commit.80d5c536",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.18.0"
+  },
+  "userSourceNameMap": {
+    "contracts/ChainOfCustody.sol": "project/contracts/ChainOfCustody.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "osaka",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/ChainOfCustody.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.34;\r\n\r\ncontract ChainOfCustody {\r\n\r\n    struct Evidence {\r\n        string evidenceId;\r\n        string caseId;\r\n        string evidenceHash;\r\n        uint256 timestamp;\r\n        address custodian;\r\n        string stage;\r\n    }\r\n    struct CustodyEvent {\r\n    address custodian;\r\n    uint256 timestamp;\r\n    string stage;\r\n    }\r\n\r\n    mapping(string => Evidence) public evidenceRecords;\r\n    mapping(string => CustodyEvent[]) public custodyHistory;\r\n\r\n    event EvidenceRegistered(\r\n    string evidenceId,\r\n    string caseId,\r\n    string evidenceHash,\r\n    address custodian,\r\n    uint256 timestamp,\r\n    string stage\r\n    );\r\n\r\n    event EvidenceTransferred(\r\n    string evidenceId,\r\n    address newCustodian,\r\n    uint256 timestamp,\r\n    string stage\r\n    );\r\n\r\n    function registerEvidence(\r\n        string memory _evidenceId,\r\n        string memory _caseId,\r\n        string memory _evidenceHash,\r\n        string memory _stage\r\n    ) public {\r\n\r\n        evidenceRecords[_evidenceId] = Evidence({\r\n            evidenceId: _evidenceId,\r\n            caseId: _caseId,\r\n            evidenceHash: _evidenceHash,\r\n            timestamp: block.timestamp,\r\n            custodian: msg.sender,\r\n            stage: _stage\r\n        });\r\n\r\n        custodyHistory[_evidenceId].push(\r\n    CustodyEvent({\r\n        custodian: msg.sender,\r\n        timestamp: block.timestamp,\r\n        stage: _stage\r\n            })\r\n        );\r\n\r\n        emit EvidenceRegistered(\r\n        _evidenceId,\r\n        _caseId,\r\n        _evidenceHash,\r\n        msg.sender,\r\n        block.timestamp,\r\n        _stage\r\n    );\r\n\r\n    }\r\n\r\n    function transferCustody(\r\n    string memory _evidenceId,\r\n    string memory _newStage\r\n    ) public {\r\n\r\n    Evidence storage evidence = evidenceRecords[_evidenceId];\r\n\r\n    evidence.custodian = msg.sender;\r\n    evidence.timestamp = block.timestamp;\r\n    evidence.stage = _newStage;\r\n\r\n    custodyHistory[_evidenceId].push(\r\n        CustodyEvent({\r\n            custodian: msg.sender,\r\n            timestamp: block.timestamp,\r\n            stage: _newStage\r\n        })\r\n    );\r\n\r\n    emit EvidenceTransferred(\r\n    _evidenceId,\r\n    msg.sender,\r\n    block.timestamp,\r\n    _newStage\r\n    )  ;\r\n}\r\n\r\n\r\n\r\nfunction getCustodyHistoryLength(\r\n    string memory _evidenceId\r\n) public view returns (uint256) {\r\n    return custodyHistory[_evidenceId].length;\r\n}\r\n}"
+      }
+    }
+  }
+}
