@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "./App.css";
 
 function App() {
   const [evidence, setEvidence] = useState(null);
@@ -15,7 +16,6 @@ function App() {
   const [caseId, setCaseId] = useState("");
   const [stage, setStage] = useState("COLLECTION");
   const [file, setFile] = useState(null);
-
   const [registering, setRegistering] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -25,7 +25,12 @@ function App() {
   const [verifying, setVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState(null);
 
-  // Fetch evidence
+  // Transfer
+  const [transferId, setTransferId] = useState("EVID-004");
+  const [newStage, setNewStage] = useState("ANALYSIS");
+  const [transferring, setTransferring] = useState(false);
+  const [transferResult, setTransferResult] = useState(null);
+
   const fetchEvidence = async (id) => {
     setSearching(true);
     setLoading(true);
@@ -43,8 +48,9 @@ function App() {
       const data = await response.json();
 
       setEvidence(data);
+      setTransferId(data.evidenceId);
+      setVerifyId(data.evidenceId);
 
-      // Fetch custody history
       setHistoryLoading(true);
 
       const historyResponse = await fetch(
@@ -66,12 +72,10 @@ function App() {
     }
   };
 
-  // Load EVID-004 on startup
   useEffect(() => {
     fetchEvidence("EVID-004");
   }, []);
 
-  // Search evidence
   const handleSearch = (event) => {
     event.preventDefault();
 
@@ -83,7 +87,6 @@ function App() {
     fetchEvidence(searchId.trim());
   };
 
-  // Register evidence
   const handleRegister = async (event) => {
     event.preventDefault();
 
@@ -119,7 +122,6 @@ function App() {
 
       setResult(data);
 
-      // Display newly registered evidence
       setEvidence({
         evidenceId: data.evidenceId,
         caseId: data.caseId,
@@ -129,7 +131,6 @@ function App() {
         stage: data.stage,
       });
 
-      // Fetch new custody history
       const historyResponse = await fetch(
         `http://localhost:3000/evidence/${data.evidenceId}/history`
       );
@@ -141,8 +142,8 @@ function App() {
 
       setSearchId(data.evidenceId);
       setVerifyId(data.evidenceId);
+      setTransferId(data.evidenceId);
 
-      // Clear form
       setEvidenceId("");
       setCaseId("");
       setStage("COLLECTION");
@@ -155,7 +156,6 @@ function App() {
     }
   };
 
-  // Verify evidence
   const handleVerify = async (event) => {
     event.preventDefault();
 
@@ -196,7 +196,49 @@ function App() {
     }
   };
 
-  // Convert blockchain timestamp
+  const handleTransfer = async (event) => {
+    event.preventDefault();
+
+    if (!transferId || !newStage) {
+      alert("Enter Evidence ID and select a stage.");
+      return;
+    }
+
+    setTransferring(true);
+    setTransferResult(null);
+
+    try {
+      const response = await fetch(
+        "http://localhost:3000/transfer-custody",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            evidenceId: transferId,
+            newStage: newStage,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Custody transfer failed");
+      }
+
+      setTransferResult(data);
+
+      await fetchEvidence(transferId);
+    } catch (error) {
+      console.error("Transfer error:", error);
+      alert(error.message);
+    } finally {
+      setTransferring(false);
+    }
+  };
+
   const formatTimestamp = (timestamp) => {
     if (!timestamp) {
       return "N/A";
@@ -207,401 +249,725 @@ function App() {
     return date.toLocaleString();
   };
 
+  const shortHash = (value, start = 12, end = 10) => {
+    if (!value) return "—";
+
+    if (value.length <= start + end) {
+      return value;
+    }
+
+    return `${value.slice(0, start)}...${value.slice(-end)}`;
+  };
+
   return (
-    <div>
-      <h1>ChainGuard</h1>
+    <div className="app-shell">
 
-      <p>
-        Blockchain-Based Digital Evidence Management
-      </p>
+      {/* Sidebar */}
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-mark">CG</div>
 
-      <hr />
-
-      {/* Dashboard */}
-      <h2>Dashboard</h2>
-
-      <div>
-        <h3>Current Evidence</h3>
-        <p>
-          {evidence ? evidence.evidenceId : "None"}
-        </p>
-      </div>
-
-      <div>
-        <h3>Current Case</h3>
-        <p>
-          {evidence ? evidence.caseId : "None"}
-        </p>
-      </div>
-
-      <div>
-        <h3>Current Stage</h3>
-        <p>
-          {evidence ? evidence.stage : "None"}
-        </p>
-      </div>
-
-      <div>
-        <h3>Custody Events</h3>
-        <p>{history.length}</p>
-      </div>
-
-      <hr />
-
-      {/* Search Evidence */}
-      <h2>Find Evidence</h2>
-
-      <form onSubmit={handleSearch}>
-        <input
-          type="text"
-          value={searchId}
-          placeholder="Enter Evidence ID"
-          onChange={(e) => setSearchId(e.target.value)}
-        />
-
-        <button
-          type="submit"
-          disabled={searching}
-        >
-          {searching ? "Searching..." : "Search"}
-        </button>
-      </form>
-
-      <hr />
-
-      {/* Evidence Details */}
-      <h2>Evidence Details</h2>
-
-      {loading && (
-        <p>
-          Loading evidence from blockchain...
-        </p>
-      )}
-
-      {!loading && !evidence && (
-        <p>
-          Evidence not found.
-        </p>
-      )}
-
-      {evidence && (
-        <div>
-          <p>
-            <strong>Evidence ID:</strong>{" "}
-            {evidence.evidenceId}
-          </p>
-
-          <p>
-            <strong>Case ID:</strong>{" "}
-            {evidence.caseId}
-          </p>
-
-          <p>
-            <strong>SHA-256:</strong>{" "}
-            {evidence.evidenceHash}
-          </p>
-
-          <p>
-            <strong>Custodian:</strong>{" "}
-            {evidence.custodian}
-          </p>
-
-          <p>
-            <strong>Stage:</strong>{" "}
-            {evidence.stage}
-          </p>
-
-          <p>
-            <strong>Blockchain Timestamp:</strong>{" "}
-            {formatTimestamp(evidence.timestamp)}
-          </p>
-        </div>
-      )}
-
-      <hr />
-
-      {/* Chain of Custody */}
-      <h2>Chain of Custody</h2>
-
-      {historyLoading && (
-        <p>
-          Loading custody history from blockchain...
-        </p>
-      )}
-
-      {!historyLoading &&
-        history.length === 0 &&
-        evidence && (
-          <p>
-            No custody history found.
-          </p>
-        )}
-
-      {history.length > 0 && (
-        <div>
-          {history.map((event, index) => (
-            <div key={index}>
-              <h3>
-                Event {index + 1}
-              </h3>
-
-              <p>
-                <strong>Stage:</strong>{" "}
-                {event.stage}
-              </p>
-
-              <p>
-                <strong>Custodian:</strong>{" "}
-                {event.custodian}
-              </p>
-
-              <p>
-                <strong>Timestamp:</strong>{" "}
-                {formatTimestamp(event.timestamp)}
-              </p>
-
-              {index < history.length - 1 && (
-                <p>↓</p>
-              )}
+          <div>
+            <div className="brand-name">ChainGuard</div>
+            <div className="brand-subtitle">
+              Evidence Integrity
             </div>
-          ))}
+          </div>
         </div>
-      )}
 
-      <hr />
+        <nav className="sidebar-nav">
+          <a href="#overview" className="nav-item active">
+            <span>01</span>
+            Overview
+          </a>
 
-      {/* Verify Evidence */}
-      <h2>Verify Evidence Integrity</h2>
+          <a href="#evidence" className="nav-item">
+            <span>02</span>
+            Evidence
+          </a>
 
-      <p>
-        Upload an evidence file to compare its SHA-256
-        hash with the hash stored on the blockchain.
-      </p>
+          <a href="#custody" className="nav-item">
+            <span>03</span>
+            Chain of Custody
+          </a>
 
-      <form onSubmit={handleVerify}>
-        <div>
-          <label>
-            Evidence ID:
-            <br />
+          <a href="#verification" className="nav-item">
+            <span>04</span>
+            Verification
+          </a>
+
+          <a href="#register" className="nav-item">
+            <span>05</span>
+            Register Evidence
+          </a>
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="network-status">
+            <span className="status-dot"></span>
+            Local Network
+          </div>
+
+          <div className="network-id">
+            Chain ID 31337
+          </div>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main className="main-content">
+
+        {/* Topbar */}
+        <header className="topbar">
+          <div>
+            <div className="eyebrow">
+              DIGITAL EVIDENCE MANAGEMENT
+            </div>
+
+            <h1>Investigation Workspace</h1>
+          </div>
+
+          <div className="topbar-case">
+            <span>ACTIVE EVIDENCE</span>
+            <strong>
+              {evidence ? evidence.evidenceId : "—"}
+            </strong>
+          </div>
+        </header>
+
+        {/* Overview */}
+        <section id="overview" className="section">
+
+          <div className="section-heading">
+            <div>
+              <span className="section-number">01</span>
+              <h2>Evidence Overview</h2>
+            </div>
+
+            <div className="live-indicator">
+              <span></span>
+              Blockchain connected
+            </div>
+          </div>
+
+          <div className="overview-grid">
+
+            <div className="stat-card">
+              <div className="stat-label">
+                CURRENT EVIDENCE
+              </div>
+
+              <div className="stat-value">
+                {evidence ? evidence.evidenceId : "—"}
+              </div>
+
+              <div className="stat-meta">
+                Evidence identifier
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-label">
+                CASE
+              </div>
+
+              <div className="stat-value">
+                {evidence ? evidence.caseId : "—"}
+              </div>
+
+              <div className="stat-meta">
+                Associated case
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-label">
+                CURRENT STAGE
+              </div>
+
+              <div className="stat-value stage-value">
+                {evidence ? evidence.stage : "—"}
+              </div>
+
+              <div className="stat-meta">
+                Current custody stage
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-label">
+                CUSTODY EVENTS
+              </div>
+
+              <div className="stat-value">
+                {history.length}
+              </div>
+
+              <div className="stat-meta">
+                Recorded on chain
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        {/* Search */}
+        <section className="search-panel">
+
+          <div>
+            <div className="eyebrow">EVIDENCE LOOKUP</div>
+
+            <h2>Find Evidence</h2>
+
+            <p>
+              Retrieve evidence metadata and its custody history
+              directly from the blockchain.
+            </p>
+          </div>
+
+          <form onSubmit={handleSearch} className="search-form">
 
             <input
               type="text"
-              value={verifyId}
-              placeholder="EVID-004"
-              onChange={(e) =>
-                setVerifyId(e.target.value)
-              }
+              value={searchId}
+              placeholder="Evidence ID"
+              onChange={(e) => setSearchId(e.target.value)}
             />
-          </label>
-        </div>
 
-        <br />
-
-        <div>
-          <label>
-            Evidence File:
-            <br />
-
-            <input
-              type="file"
-              onChange={(e) =>
-                setVerifyFile(e.target.files[0])
-              }
-            />
-          </label>
-        </div>
-
-        <br />
-
-        <button
-          type="submit"
-          disabled={verifying}
-        >
-          {verifying
-            ? "Verifying..."
-            : "Verify Evidence"}
-        </button>
-      </form>
-
-      {/* Verification Result */}
-      {verificationResult && (
-        <div>
-          <hr />
-
-          <h2>
-            {verificationResult.verified
-              ? "✅ Evidence Verified"
-              : "⚠️ Evidence Integrity Check Failed"}
-          </h2>
-
-          <p>
-            <strong>Evidence ID:</strong>{" "}
-            {verificationResult.evidenceId}
-          </p>
-
-          <p>
-            <strong>Uploaded File Hash:</strong>{" "}
-            {verificationResult.uploadedHash}
-          </p>
-
-          <p>
-            <strong>Blockchain Hash:</strong>{" "}
-            {verificationResult.blockchainHash}
-          </p>
-
-          <p>
-            <strong>Result:</strong>{" "}
-            {verificationResult.message}
-          </p>
-        </div>
-      )}
-
-      <hr />
-
-      {/* Register Evidence */}
-      <h2>Register New Evidence</h2>
-
-      <form onSubmit={handleRegister}>
-        <div>
-          <label>
-            Evidence ID:
-            <br />
-
-            <input
-              type="text"
-              placeholder="EVID-005"
-              value={evidenceId}
-              onChange={(e) =>
-                setEvidenceId(e.target.value)
-              }
-            />
-          </label>
-        </div>
-
-        <br />
-
-        <div>
-          <label>
-            Case ID:
-            <br />
-
-            <input
-              type="text"
-              placeholder="CASE-003"
-              value={caseId}
-              onChange={(e) =>
-                setCaseId(e.target.value)
-              }
-            />
-          </label>
-        </div>
-
-        <br />
-
-        <div>
-          <label>
-            Stage:
-            <br />
-
-            <select
-              value={stage}
-              onChange={(e) =>
-                setStage(e.target.value)
-              }
+            <button
+              type="submit"
+              disabled={searching}
             >
-              <option value="COLLECTION">
-                COLLECTION
-              </option>
+              {searching ? "Searching..." : "Search Evidence"}
+            </button>
 
-              <option value="ANALYSIS">
-                ANALYSIS
-              </option>
+          </form>
+        </section>
 
-              <option value="VERIFICATION">
-                VERIFICATION
-              </option>
-            </select>
-          </label>
-        </div>
+        {/* Evidence */}
+        <section id="evidence" className="section">
 
-        <br />
+          <div className="section-heading">
+            <div>
+              <span className="section-number">02</span>
+              <h2>Evidence Record</h2>
+            </div>
+          </div>
 
-        <div>
-          <label>
-            Evidence File:
-            <br />
+          {loading && (
+            <div className="empty-state">
+              Loading evidence from blockchain...
+            </div>
+          )}
 
-            <input
-              type="file"
-              onChange={(e) =>
-                setFile(e.target.files[0])
-              }
-            />
-          </label>
-        </div>
+          {!loading && !evidence && (
+            <div className="empty-state">
+              Evidence not found.
+            </div>
+          )}
 
-        <br />
+          {evidence && (
+            <div className="evidence-card">
 
-        <button
-          type="submit"
-          disabled={registering}
+              <div className="evidence-header">
+
+                <div>
+                  <div className="eyebrow">
+                    EVIDENCE IDENTIFIER
+                  </div>
+
+                  <div className="evidence-id">
+                    {evidence.evidenceId}
+                  </div>
+                </div>
+
+                <div className="stage-badge">
+                  {evidence.stage}
+                </div>
+
+              </div>
+
+              <div className="details-grid">
+
+                <div className="detail-item">
+                  <span>Case ID</span>
+                  <strong>{evidence.caseId}</strong>
+                </div>
+
+                <div className="detail-item">
+                  <span>Custodian</span>
+
+                  <strong className="mono">
+                    {shortHash(evidence.custodian, 14, 8)}
+                  </strong>
+                </div>
+
+                <div className="detail-item wide">
+                  <span>SHA-256 Evidence Hash</span>
+
+                  <strong className="hash">
+                    {evidence.evidenceHash}
+                  </strong>
+                </div>
+
+                <div className="detail-item">
+                  <span>Blockchain Timestamp</span>
+
+                  <strong>
+                    {formatTimestamp(evidence.timestamp)}
+                  </strong>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+        </section>
+
+        {/* Custody */}
+        <section id="custody" className="section">
+
+          <div className="section-heading">
+            <div>
+              <span className="section-number">03</span>
+              <h2>Chain of Custody</h2>
+            </div>
+
+            <span className="record-count">
+              {history.length} recorded event
+              {history.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          {historyLoading && (
+            <div className="empty-state">
+              Loading custody history...
+            </div>
+          )}
+
+          {!historyLoading &&
+            history.length === 0 &&
+            evidence && (
+              <div className="empty-state">
+                No custody history found.
+              </div>
+            )}
+
+          {history.length > 0 && (
+            <div className="timeline">
+
+              {history.map((event, index) => (
+
+                <div className="timeline-item" key={index}>
+
+                  <div className="timeline-marker">
+                    <span></span>
+                  </div>
+
+                  <div className="timeline-content">
+
+                    <div className="timeline-top">
+
+                      <div>
+                        <span className="event-number">
+                          EVENT {String(index + 1).padStart(2, "0")}
+                        </span>
+
+                        <h3>{event.stage}</h3>
+                      </div>
+
+                      <span className="timeline-time">
+                        {formatTimestamp(event.timestamp)}
+                      </span>
+
+                    </div>
+
+                    <div className="timeline-custodian">
+                      <span>Custodian</span>
+
+                      <strong className="mono">
+                        {event.custodian}
+                      </strong>
+                    </div>
+
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
+          )}
+        </section>
+
+        {/* Transfer */}
+        <section className="operation-grid">
+
+          <div className="operation-card">
+
+            <div className="eyebrow">
+              CUSTODY OPERATION
+            </div>
+
+            <h2>Transfer Custody</h2>
+
+            <p className="operation-description">
+              Record the movement of an evidence item to its
+              next processing stage.
+            </p>
+
+            <form onSubmit={handleTransfer}>
+
+              <div className="field">
+                <label>Evidence ID</label>
+
+                <input
+                  type="text"
+                  value={transferId}
+                  placeholder="EVID-004"
+                  onChange={(e) =>
+                    setTransferId(e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <label>New Stage</label>
+
+                <select
+                  value={newStage}
+                  onChange={(e) =>
+                    setNewStage(e.target.value)
+                  }
+                >
+                  <option value="ANALYSIS">
+                    ANALYSIS
+                  </option>
+
+                  <option value="VERIFICATION">
+                    VERIFICATION
+                  </option>
+
+                  <option value="COLLECTION">
+                    COLLECTION
+                  </option>
+                </select>
+              </div>
+
+              <button
+                className="primary-button"
+                type="submit"
+                disabled={transferring}
+              >
+                {transferring
+                  ? "Recording transfer..."
+                  : "Record Custody Transfer"}
+              </button>
+
+            </form>
+
+            {transferResult && (
+
+              <div className="operation-result success">
+
+                <div className="result-title">
+                  Transfer recorded
+                </div>
+
+                <div className="result-row">
+                  <span>Stage</span>
+                  <strong>{transferResult.newStage}</strong>
+                </div>
+
+                <div className="result-row">
+                  <span>Block</span>
+                  <strong>{transferResult.blockNumber}</strong>
+                </div>
+
+                <div className="result-row">
+                  <span>Transaction</span>
+
+                  <strong className="mono">
+                    {shortHash(
+                      transferResult.transactionHash,
+                      16,
+                      10
+                    )}
+                  </strong>
+                </div>
+
+              </div>
+
+            )}
+
+          </div>
+
+          {/* Verification */}
+          <div
+            id="verification"
+            className="operation-card"
+          >
+
+            <div className="eyebrow">
+              INTEGRITY CHECK
+            </div>
+
+            <h2>Verify Evidence</h2>
+
+            <p className="operation-description">
+              Recalculate the file hash and compare it with
+              the immutable blockchain record.
+            </p>
+
+            <form onSubmit={handleVerify}>
+
+              <div className="field">
+                <label>Evidence ID</label>
+
+                <input
+                  type="text"
+                  value={verifyId}
+                  placeholder="EVID-004"
+                  onChange={(e) =>
+                    setVerifyId(e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <label>Evidence File</label>
+
+                <input
+                  type="file"
+                  onChange={(e) =>
+                    setVerifyFile(e.target.files[0])
+                  }
+                />
+              </div>
+
+              <button
+                className="primary-button"
+                type="submit"
+                disabled={verifying}
+              >
+                {verifying
+                  ? "Checking integrity..."
+                  : "Run Integrity Check"}
+              </button>
+
+            </form>
+
+            {verificationResult && (
+
+              <div
+                className={`operation-result ${
+                  verificationResult.verified
+                    ? "success"
+                    : "failure"
+                }`}
+              >
+
+                <div className="result-title">
+                  {verificationResult.verified
+                    ? "Evidence verified"
+                    : "Integrity check failed"}
+                </div>
+
+                <div className="result-row">
+                  <span>Evidence</span>
+                  <strong>
+                    {verificationResult.evidenceId}
+                  </strong>
+                </div>
+
+                <div className="hash-result">
+                  <span>Uploaded hash</span>
+
+                  <code>
+                    {verificationResult.uploadedHash}
+                  </code>
+                </div>
+
+                <div className="hash-result">
+                  <span>Blockchain hash</span>
+
+                  <code>
+                    {verificationResult.blockchainHash}
+                  </code>
+                </div>
+
+              </div>
+
+            )}
+
+          </div>
+
+        </section>
+
+        {/* Register */}
+        <section
+          id="register"
+          className="section register-section"
         >
-          {registering
-            ? "Registering..."
-            : "Register Evidence"}
-        </button>
-      </form>
 
-      {/* Registration Result */}
-      {result && (
-        <div>
-          <hr />
+          <div className="section-heading">
+            <div>
+              <span className="section-number">04</span>
+              <h2>Register New Evidence</h2>
+            </div>
+          </div>
 
-          <h2>
-            Evidence Registered Successfully
-          </h2>
+          <div className="register-card">
 
-          <p>
-            <strong>Evidence ID:</strong>{" "}
-            {result.evidenceId}
-          </p>
+            <div className="register-intro">
 
-          <p>
-            <strong>Case ID:</strong>{" "}
-            {result.caseId}
-          </p>
+              <div className="eyebrow">
+                NEW EVIDENCE RECORD
+              </div>
 
-          <p>
-            <strong>File:</strong>{" "}
-            {result.fileName}
-          </p>
+              <h2>Create Evidence Record</h2>
 
-          <p>
-            <strong>SHA-256:</strong>{" "}
-            {result.sha256}
-          </p>
+              <p>
+                Upload the original evidence file. ChainGuard
+                will calculate its SHA-256 hash and register
+                the integrity record on the blockchain.
+              </p>
 
-          <p>
-            <strong>Stage:</strong>{" "}
-            {result.stage}
-          </p>
+            </div>
 
-          <p>
-            <strong>Custodian:</strong>{" "}
-            {result.custodian}
-          </p>
+            <form
+              onSubmit={handleRegister}
+              className="register-form"
+            >
 
-          <p>
-            <strong>Transaction Hash:</strong>{" "}
-            {result.transactionHash}
-          </p>
+              <div className="field">
+                <label>Evidence ID</label>
 
-          <p>
-            <strong>Block Number:</strong>{" "}
-            {result.blockNumber}
-          </p>
-        </div>
-      )}
+                <input
+                  type="text"
+                  placeholder="EVID-005"
+                  value={evidenceId}
+                  onChange={(e) =>
+                    setEvidenceId(e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <label>Case ID</label>
+
+                <input
+                  type="text"
+                  placeholder="CASE-003"
+                  value={caseId}
+                  onChange={(e) =>
+                    setCaseId(e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <label>Initial Stage</label>
+
+                <select
+                  value={stage}
+                  onChange={(e) =>
+                    setStage(e.target.value)
+                  }
+                >
+                  <option value="COLLECTION">
+                    COLLECTION
+                  </option>
+
+                  <option value="ANALYSIS">
+                    ANALYSIS
+                  </option>
+
+                  <option value="VERIFICATION">
+                    VERIFICATION
+                  </option>
+                </select>
+              </div>
+
+              <div className="field">
+                <label>Evidence File</label>
+
+                <input
+                  type="file"
+                  onChange={(e) =>
+                    setFile(e.target.files[0])
+                  }
+                />
+              </div>
+
+              <button
+                className="primary-button"
+                type="submit"
+                disabled={registering}
+              >
+                {registering
+                  ? "Registering evidence..."
+                  : "Register Evidence"}
+              </button>
+
+            </form>
+
+            {result && (
+
+              <div className="registration-result">
+
+                <div className="result-title">
+                  Evidence registered successfully
+                </div>
+
+                <div className="registration-grid">
+
+                  <div>
+                    <span>Evidence ID</span>
+                    <strong>{result.evidenceId}</strong>
+                  </div>
+
+                  <div>
+                    <span>Case ID</span>
+                    <strong>{result.caseId}</strong>
+                  </div>
+
+                  <div>
+                    <span>Stage</span>
+                    <strong>{result.stage}</strong>
+                  </div>
+
+                  <div>
+                    <span>Block</span>
+                    <strong>{result.blockNumber}</strong>
+                  </div>
+
+                  <div className="wide">
+                    <span>SHA-256</span>
+                    <code>{result.sha256}</code>
+                  </div>
+
+                  <div className="wide">
+                    <span>Transaction</span>
+                    <code>{result.transactionHash}</code>
+                  </div>
+
+                </div>
+
+              </div>
+
+            )}
+
+          </div>
+        </section>
+
+        <footer className="footer">
+          <span>ChainGuard</span>
+          <span>Blockchain Evidence Integrity System</span>
+          <span>Local Development Network</span>
+        </footer>
+
+      </main>
     </div>
   );
 }
